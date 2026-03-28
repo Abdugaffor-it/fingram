@@ -39,6 +39,7 @@ const telegramOpenEl = document.getElementById("telegram-open");
 const telegramOpenHintEl = document.getElementById("telegram-open-hint");
 const entryTypeEl = document.getElementById("entry-type");
 const entryCategoryEl = document.getElementById("entry-category");
+const entryDateEl = document.getElementById("entry-date");
 const expenseCategoriesEl = document.getElementById("expense-categories");
 const incomeCategoriesEl = document.getElementById("income-categories");
 const goAnalyticsEl = document.getElementById("go-analytics");
@@ -49,9 +50,22 @@ const toastEl = document.getElementById("toast");
 let currentCurrency = "USD";
 let menuBound = false;
 let menuOpen = false;
+let telegramAutoLoginAttempted = false;
 
 function setStatus(message) {
   statusEl.textContent = message || "";
+}
+
+function todayInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatEntryDate(value) {
+  if (!value) return "-";
+  const day = String(value).slice(0, 10);
+  const date = new Date(`${day}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return day;
+  return date.toLocaleDateString();
 }
 
 function showToast(message) {
@@ -115,7 +129,7 @@ async function loadEntries(limit, target) {
     item.innerHTML = `
       <div class="entry-details">
         <div>${entry.category} <span class="entry-tag">${typeLabel}</span></div>
-        <div class="entry-meta">${new Date(entry.occurred_at).toLocaleString()}</div>
+        <div class="entry-meta">${formatEntryDate(entry.occurred_at)}</div>
         ${noteHtml}
       </div>
       <div class="amount">${sign}${entry.amount} ${entry.currency}</div>
@@ -165,7 +179,7 @@ async function loadFilteredEntries() {
     item.innerHTML = `
       <div class="entry-details">
         <div>${entry.category} <span class="entry-tag">${typeLabel}</span></div>
-        <div class="entry-meta">${new Date(entry.occurred_at).toLocaleString()}</div>
+        <div class="entry-meta">${formatEntryDate(entry.occurred_at)}</div>
         ${noteHtml}
       </div>
       <div class="amount">${sign}${entry.amount} ${entry.currency}</div>
@@ -392,6 +406,7 @@ async function handleEntry(event) {
     form.reset();
     entryTypeEl.value = "income";
     entryCategoryEl.value = "Зарплата";
+    entryDateEl.value = todayInputValue();
     setButtonGroupState(document.querySelector("[data-group='type']"), "income");
     switchCategorySet("income");
     setStatus("Готово");
@@ -428,7 +443,7 @@ async function handleSettings(event) {
 
 async function handleTelegramAuth() {
   if (!window.Telegram || !window.Telegram.WebApp) {
-    setStatus("Откройте внутри Telegram Web App");
+    setStatus("Telegram Web App API не найден");
     return;
   }
   const initData = window.Telegram.WebApp.initData;
@@ -445,6 +460,10 @@ async function handleTelegramAuth() {
     await loadMe();
     setStatus("Telegram авторизация успешна");
   } catch (err) {
+    if (err.message === "invalid_init_data") {
+      setStatus("Telegram initData отклонен сервером");
+      return;
+    }
     setStatus(`Ошибка: ${err.message}`);
   }
 }
@@ -454,6 +473,17 @@ function initTelegramUI() {
     window.Telegram.WebApp.ready();
     window.Telegram.WebApp.expand();
   }
+}
+
+async function autoLoginTelegram() {
+  if (telegramAutoLoginAttempted) return;
+  telegramAutoLoginAttempted = true;
+  if (!window.Telegram || !window.Telegram.WebApp) return;
+  if (!window.Telegram.WebApp.initData) {
+    setStatus("Telegram Web App открыт без initData");
+    return;
+  }
+  await handleTelegramAuth();
 }
 
 function setButtonGroupState(container, value) {
@@ -581,6 +611,9 @@ setButtonGroupState(document.querySelector("[data-group='type']"), "income");
 hookMenu();
 hookViews();
 loadConfig();
+if (entryDateEl) {
+  entryDateEl.value = todayInputValue();
+}
 
 const loginForm = document.getElementById("login-form");
 const registerForm = document.getElementById("register-form");
@@ -603,6 +636,7 @@ goAnalyticsEl.addEventListener("click", () => {
 
 setView("home");
 loadMe();
+autoLoginTelegram();
 
 if (filterFormEl) {
   filterFormEl.addEventListener("submit", (event) => {

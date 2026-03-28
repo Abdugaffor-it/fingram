@@ -80,6 +80,21 @@ init_db()
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
+
+def today_iso():
+    return datetime.now(timezone.utc).date().isoformat()
+
+
+def normalize_entry_date(value):
+    if not value:
+        return today_iso()
+    value = str(value).strip()
+    try:
+        return datetime.strptime(value[:10], "%Y-%m-%d").date().isoformat()
+    except ValueError:
+        return today_iso()
+
+
 def month_range_utc(now):
     start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     if start.month == 12:
@@ -276,7 +291,7 @@ def entries():
             currency = get_user_currency(cur, user_id)
         category = (data.get("category") or "").strip() or "Uncategorized"
         note = (data.get("note") or "").strip()
-        occurred_at = data.get("occurred_at") or now_iso()
+        occurred_at = normalize_entry_date(data.get("occurred_at"))
         if entry_type not in ("income", "expense"):
             conn.close()
             return jsonify({"ok": False, "error": "invalid_type"}), 400
@@ -302,20 +317,20 @@ def entries():
     query = "SELECT * FROM entries WHERE user_id = ?"
     params = [user_id]
     if date_from:
-        query += " AND occurred_at >= ?"
-        params.append(date_from)
+        query += " AND substr(occurred_at, 1, 10) >= ?"
+        params.append(normalize_entry_date(date_from))
     if date_to:
-        query += " AND occurred_at <= ?"
-        params.append(date_to)
-    query += " ORDER BY occurred_at DESC"
+        query += " AND substr(occurred_at, 1, 10) <= ?"
+        params.append(normalize_entry_date(date_to))
+    query += " ORDER BY substr(occurred_at, 1, 10) DESC, created_at DESC"
     count_query = "SELECT COUNT(*) as total FROM entries WHERE user_id = ?"
     count_params = [user_id]
     if date_from:
-        count_query += " AND occurred_at >= ?"
-        count_params.append(date_from)
+        count_query += " AND substr(occurred_at, 1, 10) >= ?"
+        count_params.append(normalize_entry_date(date_from))
     if date_to:
-        count_query += " AND occurred_at <= ?"
-        count_params.append(date_to)
+        count_query += " AND substr(occurred_at, 1, 10) <= ?"
+        count_params.append(normalize_entry_date(date_to))
     if limit:
         try:
             limit_val = max(1, min(int(limit), 200))
@@ -349,11 +364,11 @@ def stats():
     query = "SELECT type, SUM(amount) as total FROM entries WHERE user_id = ?"
     params = [user_id]
     if date_from:
-        query += " AND occurred_at >= ?"
-        params.append(date_from)
+        query += " AND substr(occurred_at, 1, 10) >= ?"
+        params.append(normalize_entry_date(date_from))
     if date_to:
-        query += " AND occurred_at <= ?"
-        params.append(date_to)
+        query += " AND substr(occurred_at, 1, 10) <= ?"
+        params.append(normalize_entry_date(date_to))
     query += " GROUP BY type"
     cur.execute(query, params)
     totals = {"income": 0.0, "expense": 0.0}
@@ -433,6 +448,8 @@ def analytics():
     now = datetime.now(timezone.utc)
     today = now.date().isoformat()
     month_start, month_end = month_range_utc(now)
+    month_start_day = month_start.date().isoformat()
+    month_end_day = (month_end.date() - timedelta(days=1)).isoformat()
     seven_days_ago = (now - timedelta(days=6)).date().isoformat()
     conn = get_db()
     cur = conn.cursor()
@@ -455,10 +472,10 @@ def analytics():
         """
         SELECT type, SUM(amount) as total
         FROM entries
-        WHERE user_id = ? AND occurred_at >= ? AND occurred_at < ?
+        WHERE user_id = ? AND substr(occurred_at, 1, 10) >= ? AND substr(occurred_at, 1, 10) <= ?
         GROUP BY type
         """,
-        (user_id, month_start.isoformat(), month_end.isoformat()),
+        (user_id, month_start_day, month_end_day),
     )
     month_totals = {"income": 0.0, "expense": 0.0}
     for row in cur.fetchall():
@@ -469,12 +486,12 @@ def analytics():
         """
         SELECT category, SUM(amount) as total
         FROM entries
-        WHERE user_id = ? AND type = 'expense' AND occurred_at >= ? AND occurred_at < ?
+        WHERE user_id = ? AND type = 'expense' AND substr(occurred_at, 1, 10) >= ? AND substr(occurred_at, 1, 10) <= ?
         GROUP BY category
         ORDER BY total DESC
         LIMIT 6
         """,
-        (user_id, month_start.isoformat(), month_end.isoformat()),
+        (user_id, month_start_day, month_end_day),
     )
     month_top_categories = [
         {"category": row["category"], "total": row["total"] or 0.0} for row in cur.fetchall()
@@ -484,12 +501,12 @@ def analytics():
         """
         SELECT category, SUM(amount) as total
         FROM entries
-        WHERE user_id = ? AND type = 'income' AND occurred_at >= ? AND occurred_at < ?
+        WHERE user_id = ? AND type = 'income' AND substr(occurred_at, 1, 10) >= ? AND substr(occurred_at, 1, 10) <= ?
         GROUP BY category
         ORDER BY total DESC
         LIMIT 6
         """,
-        (user_id, month_start.isoformat(), month_end.isoformat()),
+        (user_id, month_start_day, month_end_day),
     )
     month_income_categories = [
         {"category": row["category"], "total": row["total"] or 0.0} for row in cur.fetchall()
@@ -546,10 +563,10 @@ def analytics():
             """
             SELECT type, SUM(amount) as total
             FROM entries
-            WHERE user_id = ? AND occurred_at >= ? AND occurred_at < ?
+            WHERE user_id = ? AND substr(occurred_at, 1, 10) >= ? AND substr(occurred_at, 1, 10) <= ?
             GROUP BY type
             """,
-            (user_id, start.isoformat(), end.isoformat()),
+            (user_id, start.date().isoformat(), (end.date() - timedelta(days=1)).isoformat()),
         )
         totals = {"income": 0.0, "expense": 0.0}
         for row in cur.fetchall():
@@ -565,10 +582,10 @@ def analytics():
         """
         SELECT type, SUM(amount) as total
         FROM entries
-        WHERE user_id = ? AND occurred_at >= ? AND occurred_at < ?
+        WHERE user_id = ? AND substr(occurred_at, 1, 10) >= ? AND substr(occurred_at, 1, 10) <= ?
         GROUP BY type
         """,
-        (user_id, prev_start.isoformat(), prev_end.isoformat()),
+        (user_id, prev_start.date().isoformat(), (prev_end.date() - timedelta(days=1)).isoformat()),
     )
     prev_totals = {"income": 0.0, "expense": 0.0}
     for row in cur.fetchall():
@@ -612,10 +629,10 @@ def analytics():
         """
         SELECT type, SUM(amount) as total
         FROM entries
-        WHERE user_id = ? AND occurred_at >= ? AND occurred_at < ?
+        WHERE user_id = ? AND substr(occurred_at, 1, 10) >= ? AND substr(occurred_at, 1, 10) <= ?
         GROUP BY type
         """,
-        (user_id, three_month_start.isoformat(), month_end.isoformat()),
+        (user_id, three_month_start.date().isoformat(), month_end_day),
     )
     totals_3m = {"income": 0.0, "expense": 0.0}
     for row in cur.fetchall():
