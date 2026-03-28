@@ -37,6 +37,7 @@ def init_db():
             monthly_income_target REAL,
             monthly_savings_goal REAL,
             emergency_fund_target_months REAL,
+            last_seen_at TEXT,
             created_at TEXT NOT NULL
         )
         """
@@ -67,6 +68,8 @@ def init_db():
         cur.execute("ALTER TABLE users ADD COLUMN monthly_savings_goal REAL")
     if "emergency_fund_target_months" not in columns:
         cur.execute("ALTER TABLE users ADD COLUMN emergency_fund_target_months REAL")
+    if "last_seen_at" not in columns:
+        cur.execute("ALTER TABLE users ADD COLUMN last_seen_at TEXT")
     cur.execute("UPDATE users SET preferred_currency = COALESCE(preferred_currency, 'USD')")
     cur.execute(
         "UPDATE users SET emergency_fund_target_months = COALESCE(emergency_fund_target_months, 3)"
@@ -129,6 +132,16 @@ def require_auth():
     return user_id
 
 
+def touch_user_activity(user_id):
+    if not user_id:
+        return
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET last_seen_at = ? WHERE id = ?", (now_iso(), user_id))
+    conn.commit()
+    conn.close()
+
+
 def verify_telegram_init_data(init_data: str, bot_token: str) -> bool:
     if not init_data or not bot_token:
         return False
@@ -162,12 +175,14 @@ def me():
     user_id = require_auth()
     if not user_id:
         return jsonify({"ok": False, "error": "unauthorized"}), 401
+    touch_user_activity(user_id)
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
         """
         SELECT id, email, display_name, telegram_user_id, preferred_currency,
-               monthly_income_target, monthly_savings_goal, emergency_fund_target_months
+               monthly_income_target, monthly_savings_goal, emergency_fund_target_months,
+               last_seen_at
         FROM users WHERE id = ?
         """,
         (user_id,),
@@ -210,6 +225,7 @@ def register():
         return jsonify({"ok": False, "error": "email_exists"}), 409
     conn.close()
     session["user_id"] = user_id
+    touch_user_activity(user_id)
     return jsonify({"ok": True})
 
 
@@ -228,6 +244,7 @@ def login():
     if not row or not check_password_hash(row["password_hash"], password):
         return jsonify({"ok": False, "error": "invalid_credentials"}), 401
     session["user_id"] = row["id"]
+    touch_user_activity(row["id"])
     return jsonify({"ok": True})
 
 
@@ -272,6 +289,7 @@ def auth_telegram():
         user_id = cur.lastrowid
     conn.close()
     session["user_id"] = user_id
+    touch_user_activity(user_id)
     return jsonify({"ok": True, "user_id": user_id})
 
 
@@ -280,6 +298,7 @@ def entries():
     user_id = require_auth()
     if not user_id:
         return jsonify({"ok": False, "error": "unauthorized"}), 401
+    touch_user_activity(user_id)
     conn = get_db()
     cur = conn.cursor()
     if request.method == "POST":
@@ -357,6 +376,7 @@ def stats():
     user_id = require_auth()
     if not user_id:
         return jsonify({"ok": False, "error": "unauthorized"}), 401
+    touch_user_activity(user_id)
     date_from = request.args.get("from")
     date_to = request.args.get("to")
     conn = get_db()
@@ -384,6 +404,7 @@ def profile():
     user_id = require_auth()
     if not user_id:
         return jsonify({"ok": False, "error": "unauthorized"}), 401
+    touch_user_activity(user_id)
     conn = get_db()
     cur = conn.cursor()
     if request.method == "PATCH":
@@ -425,7 +446,8 @@ def profile():
     cur.execute(
         """
         SELECT id, email, display_name, preferred_currency,
-               monthly_income_target, monthly_savings_goal, emergency_fund_target_months
+               monthly_income_target, monthly_savings_goal, emergency_fund_target_months,
+               last_seen_at
         FROM users WHERE id = ?
         """,
         (user_id,),
@@ -445,6 +467,7 @@ def analytics():
     user_id = require_auth()
     if not user_id:
         return jsonify({"ok": False, "error": "unauthorized"}), 401
+    touch_user_activity(user_id)
     now = datetime.now(timezone.utc)
     today = now.date().isoformat()
     month_start, month_end = month_range_utc(now)
