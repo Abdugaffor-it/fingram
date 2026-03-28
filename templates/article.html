@@ -1,0 +1,21 @@
+{% extends 'base_public.html' %}
+{% block content %}
+<main class="page-main">
+  <article class="article-shell">
+    <div class="eyebrow">{{ 'Блог Fin-gram' if lang == 'ru' else 'Fin-gram Blog' }}</div>
+    <h1>{{ article.title }}</h1>
+    <p class="article-intro">{{ article.intro }}</p>
+    {% for section in article.sections %}
+    <section class="article-section surface-card">
+      <h2>{{ section.title }}</h2>
+      <p>{{ section.body }}</p>
+    </section>
+    {% endfor %}
+    <div class="article-cta surface-card">
+      <h2>{{ 'Попробуйте Fin-gram на практике' if lang == 'ru' else 'Try Fin-gram in practice' }}</h2>
+      <p>{{ 'Откройте Web App и начните вести учет доходов и расходов в более системном режиме.' if lang == 'ru' else 'Open the Web App and start tracking income and expenses in a more consistent way.' }}</p>
+      <a class="btn btn-primary" href="{{ webapp_link }}">{{ 'Открыть приложение' if lang == 'ru' else 'Open app' }}</a>
+    </div>
+  </article>
+</main>
+{% endblock %}

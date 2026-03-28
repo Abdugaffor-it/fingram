@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="{{ lang }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page_title }}</title>
+    <meta name="description" content="{{ description }}" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="{{ canonical_url }}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/public.css" />
+    <meta property="og:title" content="{{ page_title }}" />
+    <meta property="og:description" content="{{ description }}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="{{ canonical_url }}" />
+    <meta property="og:image" content="{{ og_image }}" />
+    <meta property="og:site_name" content="{{ site_name }}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ page_title }}" />
+    <meta name="twitter:description" content="{{ description }}" />
+    <meta name="twitter:image" content="{{ og_image }}" />
+    {% for hreflang, href in hreflangs.items() %}
+    <link rel="alternate" hreflang="{{ hreflang }}" href="{{ href }}" />
+    {% endfor %}
+    {% for item in structured_data %}
+    <script type="application/ld+json">{{ item|tojson }}</script>
+    {% endfor %}
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <a class="logo" href="/{{ lang }}">{{ site_name }}</a>
+        <nav class="site-nav">
+          <a href="/{{ lang }}">{{ 'Главная' if lang == 'ru' else 'Home' }}</a>
+          <a href="/{{ lang }}/about">{{ 'О продукте' if lang == 'ru' else 'About' }}</a>
+          <a href="/{{ lang }}/pricing">Pricing</a>
+          <a href="/{{ lang }}/faq">FAQ</a>
+          <a href="/{{ lang }}/blog/expense-income-journal">{{ 'Статьи' if lang == 'ru' else 'Guides' }}</a>
+          <a href="{{ lang_switch_url }}" rel="alternate">{{ lang_switch_label }}</a>
+        </nav>
+      </header>
+
+      {% block content %}{% endblock %}
+
+      <footer class="site-footer">
+        <div>
+          <div class="footer-brand">{{ site_name }}</div>
+          <p>{{ 'Учет расходов и доходов с аналитикой и Telegram Web App.' if lang == 'ru' else 'Income and expense tracking with analytics and a Telegram Web App.' }}</p>
+        </div>
+        <div class="footer-links">
+          <a href="/{{ lang }}/about">{{ 'О продукте' if lang == 'ru' else 'About' }}</a>
+          <a href="/{{ lang }}/pricing">Pricing</a>
+          <a href="/{{ lang }}/faq">FAQ</a>
+          <a href="{{ webapp_link }}">{{ 'Открыть приложение' if lang == 'ru' else 'Open app' }}</a>
+          {% if telegram_link %}<a href="{{ telegram_link }}">Telegram</a>{% endif %}
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

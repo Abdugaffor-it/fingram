@@ -5,7 +5,7 @@ import hmac
 import hashlib
 from datetime import datetime, timezone, timedelta
 from urllib.parse import parse_qsl
-from flask import Flask, jsonify, request, session, send_from_directory
+from flask import Flask, jsonify, request, session, send_from_directory, render_template, abort, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -14,6 +14,8 @@ DB_PATH = os.path.join(BASE_DIR, "data.db")
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 app.secret_key = os.environ.get("APP_SECRET", "dev-secret-change-me")
 ALLOWED_CURRENCIES = {"TJS", "RUB", "USD", "KZT", "UZS"}
+SITE_NAME = "Fin-gram"
+SUPPORTED_LANGS = ("ru", "en")
 
 
 def get_db():
@@ -78,6 +80,390 @@ def init_db():
     conn.close()
 
 init_db()
+
+
+LANDING_CONTENT = {
+    "ru": {
+        "lang_name": "Русский",
+        "hero_title": "Fin-gram помогает держать деньги под контролем каждый день.",
+        "hero_subtitle": "Учет доходов и расходов, аналитика капитала и Telegram Web App в одном строгом интерфейсе.",
+        "cta_primary": "Открыть Web App",
+        "cta_secondary": "Открыть в Telegram",
+        "badge": "Финансовый дневник в Telegram",
+        "section_title": "Почему выбирают Fin-gram",
+        "features": [
+            {
+                "title": "Быстрые записи",
+                "text": "Добавляйте доходы и расходы за несколько секунд с понятными категориями и единой валютой профиля.",
+            },
+            {
+                "title": "Глубокая аналитика",
+                "text": "Смотрите структуру расходов, соотношение доходов и накоплений, тренды и ключевые метрики.",
+            },
+            {
+                "title": "Telegram внутри процесса",
+                "text": "Открывайте приложение прямо из Telegram и держите финансовый журнал под рукой на телефоне.",
+            },
+        ],
+        "steps_title": "Как это работает",
+        "steps": [
+            "Авторизуйтесь через email или Telegram Web App.",
+            "Фиксируйте доходы и расходы по датам и категориям.",
+            "Следите за динамикой, концентрацией расходов и советами по улучшению финансов.",
+        ],
+        "use_cases_title": "Кому подходит",
+        "use_cases": [
+            "Личный учет расходов и доходов.",
+            "Контроль семейного бюджета.",
+            "Финансовая дисциплина для фрилансеров и предпринимателей.",
+        ],
+        "preview_title": "Что вы получаете внутри",
+        "preview_points": [
+            "Дашборд с доходом, расходом и итогом месяца.",
+            "Аналитика по категориям, периодам и источникам дохода.",
+            "Финансовые советы на основе ваших реальных данных.",
+        ],
+        "faq_teaser_title": "Частые вопросы",
+        "faq_teaser_text": "Подготовили ответы о безопасности, Telegram Web App и финансовой аналитике.",
+        "faq_cta": "Открыть FAQ",
+        "blog_title": "Полезные материалы",
+        "blog_teaser": "Статьи для тех, кто хочет лучше управлять бюджетом и личными финансами.",
+    },
+    "en": {
+        "lang_name": "English",
+        "hero_title": "Fin-gram keeps your money under control every day.",
+        "hero_subtitle": "Track income and expenses, monitor capital, and use a Telegram Web App in one premium workflow.",
+        "cta_primary": "Open Web App",
+        "cta_secondary": "Open in Telegram",
+        "badge": "Finance journal inside Telegram",
+        "section_title": "Why people choose Fin-gram",
+        "features": [
+            {
+                "title": "Fast entry flow",
+                "text": "Capture income and expenses in seconds with clear categories and one default profile currency.",
+            },
+            {
+                "title": "Deeper analytics",
+                "text": "Understand spending structure, savings ratio, cash flow trends, and the metrics that matter.",
+            },
+            {
+                "title": "Telegram-native workflow",
+                "text": "Launch the app right from Telegram and keep your finance journal one tap away on mobile.",
+            },
+        ],
+        "steps_title": "How it works",
+        "steps": [
+            "Sign in with email or Telegram Web App.",
+            "Record income and expenses by date and category.",
+            "Use analytics, concentration metrics, and tailored financial tips.",
+        ],
+        "use_cases_title": "Who it is for",
+        "use_cases": [
+            "Personal expense and income tracking.",
+            "Household budget control.",
+            "Financial discipline for freelancers and founders.",
+        ],
+        "preview_title": "What you get inside",
+        "preview_points": [
+            "A dashboard with monthly income, expense, and net result.",
+            "Analytics by category, period, and income source.",
+            "Practical financial advice based on your own data.",
+        ],
+        "faq_teaser_title": "Frequently asked questions",
+        "faq_teaser_text": "Answers about security, Telegram Web App usage, and finance analytics.",
+        "faq_cta": "Open FAQ",
+        "blog_title": "Guides and insights",
+        "blog_teaser": "Content for people who want stronger control over budgeting and personal finance.",
+    },
+}
+
+FAQ_CONTENT = {
+    "ru": [
+        {
+            "q": "Что такое Fin-gram?",
+            "a": "Fin-gram — это веб-приложение и Telegram Web App для учета доходов, расходов и просмотра финансовой аналитики.",
+        },
+        {
+            "q": "Можно ли пользоваться через Telegram?",
+            "a": "Да. Вы можете открыть Fin-gram прямо из Telegram-бота и работать с приложением как с Telegram Web App.",
+        },
+        {
+            "q": "Подходит ли Fin-gram для личного бюджета?",
+            "a": "Да. Приложение рассчитано на личные финансы, семейный бюджет, контроль расходов и накоплений.",
+        },
+        {
+            "q": "Нужна ли регистрация?",
+            "a": "Да. Перед использованием кабинета пользователь авторизуется через email или Telegram, после чего получает доступ к личным данным и аналитике.",
+        },
+    ],
+    "en": [
+        {
+            "q": "What is Fin-gram?",
+            "a": "Fin-gram is a web app and Telegram Web App for tracking income, expenses, and personal finance analytics.",
+        },
+        {
+            "q": "Can I use it inside Telegram?",
+            "a": "Yes. You can launch Fin-gram from the Telegram bot and use it directly as a Telegram Web App.",
+        },
+        {
+            "q": "Is Fin-gram built for personal budgeting?",
+            "a": "Yes. It is designed for personal finance tracking, household budgeting, and spending control.",
+        },
+        {
+            "q": "Do I need to sign in first?",
+            "a": "Yes. Users authenticate with email or Telegram before they can use the private app and analytics.",
+        },
+    ],
+}
+
+BLOG_POSTS = {
+    "expense-income-journal": {
+        "ru": {
+            "title": "Как вести учет доходов и расходов без перегруза",
+            "description": "Практический подход к учету доходов и расходов: как фиксировать операции, выбирать категории и не потерять дисциплину.",
+            "intro": "Сильный контроль над личными финансами начинается не со сложных таблиц, а с регулярной фиксации движения денег. Если учет неудобный, привычка не закрепится.",
+            "sections": [
+                {
+                    "title": "Начинайте с простого ритма",
+                    "body": "Вам не нужен сложный финансовый комбайн. Достаточно ежедневно записывать каждую операцию, выбирать понятную категорию и в конце недели смотреть на общую картину.",
+                },
+                {
+                    "title": "Категории должны быть понятными",
+                    "body": "Категории расходов и доходов должны помогать принимать решения. Если категория не помогает понять, где уходит бюджет, ее нужно упростить или объединить.",
+                },
+                {
+                    "title": "Смотрите не только сумму, но и структуру",
+                    "body": "Важно не только сколько вы тратите, но и на что именно. Структура расходов по дням и категориям позволяет заметить повторяющиеся паттерны и убрать лишние траты.",
+                },
+            ],
+        },
+        "en": {
+            "title": "How to keep an income and expense journal without friction",
+            "description": "A practical guide to logging income and expenses, choosing categories, and building a sustainable money tracking habit.",
+            "intro": "Good personal finance control starts with consistency, not complexity. If tracking feels heavy, the habit breaks quickly.",
+            "sections": [
+                {
+                    "title": "Start with a simple daily rhythm",
+                    "body": "You do not need a massive spreadsheet. A daily logging habit, clear categories, and a weekly review already create strong financial awareness.",
+                },
+                {
+                    "title": "Use categories that help decisions",
+                    "body": "Categories should reveal where your budget is going. If a category does not guide action, simplify it or merge it into a cleaner structure.",
+                },
+                {
+                    "title": "Track patterns, not just totals",
+                    "body": "Total spending matters, but spending structure matters more. Category and date trends help you spot recurring leaks and make better financial decisions.",
+                },
+            ],
+        },
+    },
+    "budget-control": {
+        "ru": {
+            "title": "Как контролировать личный бюджет и не срываться",
+            "description": "Стратегия контроля личного бюджета: как отслеживать деньги, выставлять ориентиры и сохранять финансовую дисциплину.",
+            "intro": "Контроль бюджета — это не жесткие ограничения, а ясность. Когда вы видите доходы, расходы и чистый результат, становится проще принимать спокойные решения.",
+            "sections": [
+                {
+                    "title": "Определите базовые ориентиры",
+                    "body": "Установите ориентир по доходу, по расходам и по накоплению. Даже простые цели помогают понять, движетесь ли вы в нужную сторону в течение месяца.",
+                },
+                {
+                    "title": "Проверяйте бюджет регулярно",
+                    "body": "Раз в неделю сверяйте фактические расходы с ожиданиями. Это снижает риск, что деньги уйдут незаметно в одной крупной категории.",
+                },
+                {
+                    "title": "Используйте аналитику как систему обратной связи",
+                    "body": "Графики и сравнение периодов нужны не для красоты, а для действий: сократить лишнее, стабилизировать кэшфлоу и улучшить накопления.",
+                },
+            ],
+        },
+        "en": {
+            "title": "How to control a personal budget without burning out",
+            "description": "A practical budgeting strategy for tracking money, setting reference points, and staying consistent over time.",
+            "intro": "Budget control is not about pressure. It is about visibility. Once you can clearly see income, expenses, and net result, better decisions become easier.",
+            "sections": [
+                {
+                    "title": "Set a few reference points",
+                    "body": "Define simple goals for income, spending, and savings. Even lightweight targets give you a frame for evaluating the month.",
+                },
+                {
+                    "title": "Review the budget on a schedule",
+                    "body": "A weekly check-in is often enough to catch overspending before it becomes a bigger problem.",
+                },
+                {
+                    "title": "Use analytics as feedback",
+                    "body": "Charts and comparisons are useful when they drive action: adjust category limits, stabilize cash flow, and improve savings behavior.",
+                },
+            ],
+        },
+    },
+    "telegram-finance": {
+        "ru": {
+            "title": "Как использовать Telegram для управления личными финансами",
+            "description": "Почему Telegram Web App удобен для учета расходов и доходов, и как встроить финансовую дисциплину в ежедневный мессенджер.",
+            "intro": "Чем меньше трения между вами и учетом денег, тем выше шанс, что вы действительно будете вести записи. Поэтому Telegram может быть сильной точкой входа в личные финансы.",
+            "sections": [
+                {
+                    "title": "Финансовый инструмент там, где вы уже бываете каждый день",
+                    "body": "Когда учет доступен прямо в Telegram, не нужно переключаться между множеством сервисов. Это сокращает путь от расхода до записи.",
+                },
+                {
+                    "title": "Telegram Web App подходит для мобильного сценария",
+                    "body": "Мобильный интерфейс внутри мессенджера удобен для быстрых действий: добавить запись, проверить месяц, посмотреть категорию-лидер по расходам.",
+                },
+                {
+                    "title": "Главное — не только удобство, но и системность",
+                    "body": "Даже лучший интерфейс не заменит регулярность. Используйте Telegram как точку входа, а аналитику — как инструмент для корректировки финансового поведения.",
+                },
+            ],
+        },
+        "en": {
+            "title": "How to use Telegram for personal finance management",
+            "description": "Why a Telegram Web App can be effective for expense tracking, income logging, and keeping a stronger money habit.",
+            "intro": "The lower the friction, the higher the chance that you will actually keep your finances updated. That is why Telegram can become a powerful entry point for personal finance tracking.",
+            "sections": [
+                {
+                    "title": "Your finance tool lives where you already spend time",
+                    "body": "If tracking is available inside Telegram, there is less switching cost and a shorter path from a transaction to a recorded entry.",
+                },
+                {
+                    "title": "Telegram Web Apps fit mobile finance workflows",
+                    "body": "The mobile-first flow is useful for fast actions: add a new entry, review the month, or check which category dominates spending.",
+                },
+                {
+                    "title": "Convenience matters, but consistency matters more",
+                    "body": "Telegram is the entry point. The real value comes from reviewing analytics and using them to improve your financial behavior over time.",
+                },
+            ],
+        },
+    },
+    "family-budget": {
+        "ru": {
+            "title": "Как вести семейный бюджет без постоянных конфликтов",
+            "description": "Практические принципы ведения семейного бюджета: общие правила, прозрачность расходов и понятная структура финансовых решений.",
+            "intro": "Семейный бюджет ломается не только из-за нехватки денег, но и из-за отсутствия общей системы. Когда правила не проговорены, даже мелкие траты становятся источником напряжения.",
+            "sections": [
+                {
+                    "title": "Договоритесь о базовой структуре",
+                    "body": "Сначала разделите обязательные расходы, переменные траты и цели накопления. Это создаёт общую карту и убирает хаос из обсуждений.",
+                },
+                {
+                    "title": "Фиксируйте расходы в одном месте",
+                    "body": "Когда все операции попадают в единый журнал, разговор переходит от эмоций к фактам. Это помогает быстрее увидеть, где бюджет действительно проседает.",
+                },
+                {
+                    "title": "Смотрите на тренды, а не на один день",
+                    "body": "Один дорогой день ещё не означает финансовую проблему. Реальные выводы появляются, когда вы анализируете категории и динамику по неделям и месяцам.",
+                },
+            ],
+        },
+        "en": {
+            "title": "How to manage a family budget without constant tension",
+            "description": "A practical approach to family budgeting with shared rules, transparent spending, and calmer financial decisions.",
+            "intro": "Family budgeting often breaks down because there is no shared system. Without clear rules, even small purchases can become a source of friction.",
+            "sections": [
+                {
+                    "title": "Agree on a basic structure first",
+                    "body": "Separate fixed costs, variable spending, and savings goals. That gives everyone a shared financial map.",
+                },
+                {
+                    "title": "Track spending in one place",
+                    "body": "When all expenses live in one journal, discussions move from emotion to evidence. That makes budgeting much easier to manage.",
+                },
+                {
+                    "title": "Focus on trends, not one bad day",
+                    "body": "One expensive day is not the whole story. Monthly and category trends reveal the real pressure points in a household budget.",
+                },
+            ],
+        },
+    },
+    "savings-habits": {
+        "ru": {
+            "title": "Как выстроить привычку накоплений без жестких ограничений",
+            "description": "Как превратить накопления в устойчивую привычку: ориентиры, автоматизация и контроль личных финансов без изматывающего режима.",
+            "intro": "Накопления редко держатся только на силе воли. Система работает лучше, когда вы заранее понимаете цель, размер откладываемой суммы и видите прогресс.",
+            "sections": [
+                {
+                    "title": "Сначала определите реалистичную сумму",
+                    "body": "Лучше откладывать умеренную сумму регулярно, чем пытаться экономить слишком агрессивно и быстро потерять устойчивость.",
+                },
+                {
+                    "title": "Свяжите накопления с ежемесячным обзором",
+                    "body": "Когда вы видите доход, расход и чистый результат месяца, проще принять решение, сколько можно безопасно направить в резерв или цель.",
+                },
+                {
+                    "title": "Используйте аналитику как мотиватор",
+                    "body": "Графики и цели помогают видеть не только ограничения, но и прогресс. Это делает накопления психологически проще и понятнее.",
+                },
+            ],
+        },
+        "en": {
+            "title": "How to build a savings habit without extreme restrictions",
+            "description": "A practical guide to building sustainable savings through realistic targets, automation, and better financial visibility.",
+            "intro": "Savings rarely survive on willpower alone. A stronger system starts with clear targets, reasonable amounts, and visible progress.",
+            "sections": [
+                {
+                    "title": "Choose a realistic amount first",
+                    "body": "A moderate monthly savings habit is stronger than an aggressive plan that quickly collapses under pressure.",
+                },
+                {
+                    "title": "Connect savings to your monthly review",
+                    "body": "When you can see income, expenses, and net result clearly, it becomes easier to decide how much money can safely move into savings.",
+                },
+                {
+                    "title": "Use analytics as motivation",
+                    "body": "Charts and goals help you see momentum, not only constraints. That makes saving feel more achievable over time.",
+                },
+            ],
+        },
+    },
+}
+
+ABOUT_CONTENT = {
+    "ru": {
+        "title": "О Fin-gram",
+        "description": "Fin-gram — это продукт для учета расходов и доходов, который объединяет веб-приложение, Telegram Web App и финансовую аналитику.",
+        "lead": "Fin-gram создан для людей, которым нужен современный и понятный способ контролировать деньги без сложных таблиц и перегруженных интерфейсов.",
+        "cards": [
+            {"title": "Продуктовая идея", "text": "Свести учёт, аналитику и Telegram в одну систему, где финансовая дисциплина не требует лишнего трения."},
+            {"title": "Для кого", "text": "Для личного бюджета, семейных финансов, фриланса и повседневного контроля капитала."},
+            {"title": "Подход", "text": "Меньше хаоса, больше ясности: понятные категории, быстрые записи, заметная аналитика и советы по данным."},
+        ],
+    },
+    "en": {
+        "title": "About Fin-gram",
+        "description": "Fin-gram is a product for income and expense tracking that combines a web app, Telegram Web App, and financial analytics.",
+        "lead": "Fin-gram is built for people who want a modern and clear way to control money without heavy spreadsheets or bloated finance tools.",
+        "cards": [
+            {"title": "Product vision", "text": "Bring tracking, analytics, and Telegram into one workflow with less friction and better financial clarity."},
+            {"title": "Who it is for", "text": "Personal budgeting, household finance, freelance income tracking, and everyday money control."},
+            {"title": "Approach", "text": "Less chaos, more visibility: clean categories, fast entry, strong analytics, and data-backed advice."},
+        ],
+    },
+}
+
+PRICING_CONTENT = {
+    "ru": {
+        "title": "Цены Fin-gram",
+        "description": "Текущая версия Fin-gram доступна как продукт раннего этапа с фокусом на запуск, рост и обратную связь пользователей.",
+        "lead": "Сейчас Fin-gram развивается как ранний продукт. Публичная pricing-страница нужна для SEO, позиционирования и будущих тарифов.",
+        "plans": [
+            {"name": "Starter", "price": "Скоро", "text": "Базовый учет доходов и расходов, Telegram Web App и основные отчеты."},
+            {"name": "Pro", "price": "Скоро", "text": "Расширенная аналитика, цели, рекомендации и более глубокий финансовый контроль."},
+            {"name": "Team / Family", "price": "Скоро", "text": "Совместные сценарии, семейный бюджет и расширенная структура финансовых ролей."},
+        ],
+    },
+    "en": {
+        "title": "Fin-gram Pricing",
+        "description": "The current Fin-gram release is an early-stage product focused on launch, growth, and user feedback.",
+        "lead": "Fin-gram is currently in an early product phase. This public pricing page supports SEO, positioning, and future plan rollout.",
+        "plans": [
+            {"name": "Starter", "price": "Coming soon", "text": "Core income and expense tracking, Telegram Web App access, and essential reporting."},
+            {"name": "Pro", "price": "Coming soon", "text": "Advanced analytics, goals, recommendations, and deeper financial control."},
+            {"name": "Team / Family", "price": "Coming soon", "text": "Shared workflows, household budgeting, and richer financial collaboration."},
+        ],
+    },
+}
 
 
 def now_iso():
@@ -165,9 +551,257 @@ def verify_telegram_init_data(init_data: str, bot_token: str) -> bool:
     return True
 
 
+def get_site_url():
+    explicit = (os.environ.get("SITE_URL") or "").strip().rstrip("/")
+    if explicit:
+        return explicit
+    return request.url_root.rstrip("/")
+
+
+def get_telegram_bot_link():
+    username = (os.environ.get("TELEGRAM_BOT_USERNAME") or "").strip()
+    if username:
+        return f"https://t.me/{username}"
+    return None
+
+
+def get_telegram_webapp_link():
+    configured = (os.environ.get("TELEGRAM_WEBAPP_URL") or "").strip()
+    if configured:
+        return configured
+    username = (os.environ.get("TELEGRAM_BOT_USERNAME") or "").strip()
+    if username:
+        return f"https://t.me/{username}?startapp=main"
+    return f"{get_site_url()}/app"
+
+
+def build_hreflangs(path_suffix=""):
+    site_url = get_site_url()
+    normalized = path_suffix if path_suffix.startswith("/") else f"/{path_suffix}" if path_suffix else ""
+    return {
+        "ru": f"{site_url}/ru{normalized}" if normalized else f"{site_url}/ru",
+        "en": f"{site_url}/en{normalized}" if normalized else f"{site_url}/en",
+        "x-default": f"{site_url}/ru{normalized}" if normalized else f"{site_url}/ru",
+    }
+
+
+def base_structured_data():
+    site_url = get_site_url()
+    return [
+        {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": SITE_NAME,
+            "url": site_url,
+            "logo": f"{site_url}/static/og-fin-gram.svg",
+        },
+        {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": SITE_NAME,
+            "url": site_url,
+            "inLanguage": ["ru", "en"],
+        },
+    ]
+
+
+def marketing_page_context(lang, page_title, description, canonical_url, path_suffix=""):
+    lang_copy = LANDING_CONTENT[lang]
+    site_url = get_site_url()
+    return {
+        "lang": lang,
+        "site_name": SITE_NAME,
+        "page_title": page_title,
+        "description": description,
+        "canonical_url": canonical_url,
+        "site_url": site_url,
+        "og_image": f"{site_url}/static/og-fin-gram.svg",
+        "telegram_link": get_telegram_bot_link(),
+        "webapp_link": get_telegram_webapp_link(),
+        "hreflangs": build_hreflangs(path_suffix),
+        "lang_switch_url": f"/{'en' if lang == 'ru' else 'ru'}{path_suffix}",
+        "lang_switch_label": "English" if lang == "ru" else "Русский",
+        "lang_name": lang_copy["lang_name"],
+        "brand_badge": lang_copy["badge"],
+    }
+
+
+@app.after_request
+def add_robot_headers(response):
+    if request.path.startswith("/api/") or request.path == "/app":
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
+
+
 @app.route("/")
-def index():
-    return send_from_directory(app.static_folder, "index.html")
+def marketing_home():
+    return landing("ru")
+
+
+@app.route("/app")
+def app_home():
+    response = make_response(render_template("app.html"))
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
+
+
+@app.route("/<lang>")
+def landing(lang):
+    if lang not in SUPPORTED_LANGS:
+        abort(404)
+    content = LANDING_CONTENT[lang]
+    page_title = (
+        "Fin-gram — учет расходов и доходов в Telegram"
+        if lang == "ru"
+        else "Fin-gram — Expense Tracker and Telegram Finance App"
+    )
+    description = (
+        "Fin-gram помогает вести учет расходов и доходов, смотреть аналитику и управлять личными финансами через веб-приложение и Telegram."
+        if lang == "ru"
+        else "Fin-gram helps you track income and expenses, review analytics, and manage personal finances through a web app and Telegram."
+    )
+    context = marketing_page_context(lang, page_title, description, f"{get_site_url()}/{lang}")
+    context.update(
+        {
+            "page_kind": "landing",
+            "content": content,
+            "posts": [
+                {"slug": slug, "title": BLOG_POSTS[slug][lang]["title"], "description": BLOG_POSTS[slug][lang]["description"]}
+                for slug in BLOG_POSTS
+            ],
+            "structured_data": base_structured_data(),
+        }
+    )
+    return render_template("marketing.html", **context)
+
+
+@app.route("/<lang>/faq")
+def faq(lang):
+    if lang not in SUPPORTED_LANGS:
+        abort(404)
+    page_title = "FAQ Fin-gram" if lang == "ru" else "Fin-gram FAQ"
+    description = (
+        "Ответы на частые вопросы о Fin-gram, Telegram Web App и учете личных финансов."
+        if lang == "ru"
+        else "Frequently asked questions about Fin-gram, Telegram Web App, and personal finance tracking."
+    )
+    structured_data = base_structured_data() + [
+        {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+                {"@type": "Question", "name": item["q"], "acceptedAnswer": {"@type": "Answer", "text": item["a"]}}
+                for item in FAQ_CONTENT[lang]
+            ],
+        }
+    ]
+    context = marketing_page_context(lang, page_title, description, f"{get_site_url()}/{lang}/faq", "/faq")
+    context.update({"page_kind": "faq", "faq_items": FAQ_CONTENT[lang], "structured_data": structured_data})
+    return render_template("faq.html", **context)
+
+
+@app.route("/<lang>/about")
+def about(lang):
+    if lang not in SUPPORTED_LANGS:
+        abort(404)
+    content = ABOUT_CONTENT[lang]
+    context = marketing_page_context(
+        lang,
+        content["title"],
+        content["description"],
+        f"{get_site_url()}/{lang}/about",
+        "/about",
+    )
+    context.update({"page_kind": "about", "content": content, "structured_data": base_structured_data()})
+    return render_template("about.html", **context)
+
+
+@app.route("/<lang>/pricing")
+def pricing(lang):
+    if lang not in SUPPORTED_LANGS:
+        abort(404)
+    content = PRICING_CONTENT[lang]
+    context = marketing_page_context(
+        lang,
+        content["title"],
+        content["description"],
+        f"{get_site_url()}/{lang}/pricing",
+        "/pricing",
+    )
+    context.update({"page_kind": "pricing", "content": content, "structured_data": base_structured_data()})
+    return render_template("pricing.html", **context)
+
+
+@app.route("/<lang>/blog/<slug>")
+def blog_article(lang, slug):
+    if lang not in SUPPORTED_LANGS:
+        abort(404)
+    article_group = BLOG_POSTS.get(slug)
+    if not article_group or lang not in article_group:
+        abort(404)
+    article = article_group[lang]
+    canonical_url = f"{get_site_url()}/{lang}/blog/{slug}"
+    structured_data = base_structured_data() + [
+        {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": article["title"],
+            "description": article["description"],
+            "author": {"@type": "Organization", "name": SITE_NAME},
+            "publisher": {"@type": "Organization", "name": SITE_NAME},
+            "mainEntityOfPage": canonical_url,
+            "datePublished": "2026-03-28",
+            "dateModified": "2026-03-28",
+            "image": f"{get_site_url()}/static/og-fin-gram.svg",
+            "inLanguage": lang,
+        }
+    ]
+    context = marketing_page_context(
+        lang,
+        article["title"],
+        article["description"],
+        canonical_url,
+        f"/blog/{slug}",
+    )
+    context.update({"page_kind": "article", "article": article, "slug": slug, "structured_data": structured_data})
+    return render_template("article.html", **context)
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    site_url = get_site_url()
+    content = "\n".join(
+        [
+            "User-agent: *",
+            "Allow: /",
+            "Disallow: /app",
+            "Disallow: /api/",
+            "Sitemap: " + f"{site_url}/sitemap.xml",
+        ]
+    )
+    response = make_response(content)
+    response.mimetype = "text/plain"
+    return response
+
+
+@app.route("/sitemap.xml")
+def sitemap():
+    urls = [
+        {"loc": f"{get_site_url()}/ru", "priority": "1.0"},
+        {"loc": f"{get_site_url()}/en", "priority": "0.9"},
+        {"loc": f"{get_site_url()}/ru/about", "priority": "0.8"},
+        {"loc": f"{get_site_url()}/en/about", "priority": "0.8"},
+        {"loc": f"{get_site_url()}/ru/pricing", "priority": "0.7"},
+        {"loc": f"{get_site_url()}/en/pricing", "priority": "0.7"},
+        {"loc": f"{get_site_url()}/ru/faq", "priority": "0.8"},
+        {"loc": f"{get_site_url()}/en/faq", "priority": "0.8"},
+    ]
+    for slug in BLOG_POSTS:
+        urls.append({"loc": f"{get_site_url()}/ru/blog/{slug}", "priority": "0.7"})
+        urls.append({"loc": f"{get_site_url()}/en/blog/{slug}", "priority": "0.7"})
+    response = make_response(render_template("sitemap.xml", urls=urls))
+    response.mimetype = "application/xml"
+    return response
 
 
 @app.route("/api/me")

@@ -1,0 +1,20 @@
+{% extends 'base_public.html' %}
+{% block content %}
+<main class="page-main">
+  <section class="page-hero compact">
+    <div class="eyebrow">Pricing</div>
+    <h1>{{ content.title }}</h1>
+    <p>{{ content.lead }}</p>
+  </section>
+  <section class="content-section feature-grid">
+    {% for plan in content.plans %}
+    <article class="surface-card pricing-card">
+      <h2>{{ plan.name }}</h2>
+      <div class="pricing-value">{{ plan.price }}</div>
+      <p>{{ plan.text }}</p>
+      <a class="text-link" href="{{ webapp_link }}">{{ 'Открыть приложение' if lang == 'ru' else 'Open app' }}</a>
+    </article>
+    {% endfor %}
+  </section>
+</main>
+{% endblock %}

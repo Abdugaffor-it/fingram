@@ -42,7 +42,7 @@ BOT_NAME = os.environ.get("TELEGRAM_BOT_USERNAME", "")
 ADMIN_USER_ID = str(os.environ.get("TELEGRAM_ADMIN_USER_ID", "")).strip()
 
 WELCOME_TEXT = (
-    "Добро пожаловать в MoneyManagement.\n\n"
+    "Добро пожаловать в Fin-gram.\n\n"
     "Что можно делать:\n"
     "1. Вести дневник доходов и расходов.\n"
     "2. Смотреть аналитику и советы по улучшению финансов.\n"
@@ -141,11 +141,11 @@ def is_admin(update: Update) -> bool:
 
 def webapp_keyboard() -> InlineKeyboardMarkup:
     if WEBAPP_URL:
-        button = InlineKeyboardButton("Открыть MoneyManagement", web_app=WebAppInfo(url=WEBAPP_URL))
+        button = InlineKeyboardButton("Открыть Fin-gram", web_app=WebAppInfo(url=WEBAPP_URL))
         return InlineKeyboardMarkup([[button]])
     if BOT_NAME:
         link = f"https://t.me/{BOT_NAME}?startapp=main"
-        button = InlineKeyboardButton("Открыть MoneyManagement", url=link)
+        button = InlineKeyboardButton("Открыть Fin-gram", url=link)
         return InlineKeyboardMarkup([[button]])
     return InlineKeyboardMarkup([[InlineKeyboardButton("Нет настроенного URL", callback_data="noop")]])
 
@@ -272,7 +272,7 @@ def render_bar(value: int, max_value: int, width=12) -> str:
 def render_admin_text():
     stats = get_admin_stats()
     lines = [
-        "Админ-панель MoneyManagement",
+        "Админ-панель Fin-gram",
         "",
         f"Всего пользователей: {stats['total_users']}",
         f"Активных за 7 дней: {stats['active_users']}",

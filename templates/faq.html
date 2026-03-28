@@ -1,0 +1,18 @@
+{% extends 'base_public.html' %}
+{% block content %}
+<main class="page-main">
+  <section class="page-hero compact">
+    <div class="eyebrow">FAQ</div>
+    <h1>{{ 'Частые вопросы о Fin-gram' if lang == 'ru' else 'Frequently asked questions about Fin-gram' }}</h1>
+    <p>{{ description }}</p>
+  </section>
+  <section class="content-section faq-listing">
+    {% for item in faq_items %}
+    <article class="surface-card faq-item">
+      <h2>{{ item.q }}</h2>
+      <p>{{ item.a }}</p>
+    </article>
+    {% endfor %}
+  </section>
+</main>
+{% endblock %}

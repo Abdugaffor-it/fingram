@@ -1,0 +1,10 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" rx="32" fill="#0C1118"/>
+  <circle cx="955" cy="120" r="170" fill="#D8A24A" fill-opacity="0.18"/>
+  <circle cx="210" cy="520" r="180" fill="#D8A24A" fill-opacity="0.12"/>
+  <rect x="74" y="72" width="1052" height="486" rx="28" fill="#121925" stroke="rgba(255,255,255,0.08)"/>
+  <text x="118" y="218" fill="#D8A24A" font-family="Georgia, serif" font-size="42" letter-spacing="5">FIN-GRAM</text>
+  <text x="118" y="320" fill="#EDF1F7" font-family="Georgia, serif" font-size="78" font-weight="700">Income &amp; Expense</text>
+  <text x="118" y="408" fill="#EDF1F7" font-family="Georgia, serif" font-size="78" font-weight="700">Tracking in Telegram</text>
+  <text x="118" y="492" fill="#A8B3C6" font-family="Arial, sans-serif" font-size="28">Analytics, budgeting, and financial control in one premium Web App.</text>
+</svg>

@@ -1,0 +1,113 @@
+{% extends 'base_public.html' %}
+{% block content %}
+<main>
+  <section class="hero-block">
+    <div class="hero-copy">
+      <div class="eyebrow">{{ brand_badge }}</div>
+      <h1>{{ content.hero_title }}</h1>
+      <p class="hero-text">{{ content.hero_subtitle }}</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="{{ webapp_link }}">{{ content.cta_primary }}</a>
+        {% if telegram_link %}<a class="btn btn-secondary" href="{{ telegram_link }}">{{ content.cta_secondary }}</a>{% endif %}
+      </div>
+    </div>
+    <div class="hero-card">
+      <div class="metric-card">
+        <span>{{ 'Месячный обзор' if lang == 'ru' else 'Monthly overview' }}</span>
+        <strong>{{ 'Доход, расход и чистый результат' if lang == 'ru' else 'Income, expenses, and net result' }}</strong>
+      </div>
+      <div class="metric-row">
+        <div>
+          <span>{{ 'Аналитика' if lang == 'ru' else 'Analytics' }}</span>
+          <strong>7 / 30 / 180</strong>
+        </div>
+        <div>
+          <span>Telegram</span>
+          <strong>Web App</strong>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content-section">
+    <div class="section-head">
+      <span class="section-kicker">Fin-gram</span>
+      <h2>{{ content.section_title }}</h2>
+    </div>
+    <div class="feature-grid">
+      {% for feature in content.features %}
+      <article class="surface-card">
+        <h3>{{ feature.title }}</h3>
+        <p>{{ feature.text }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="content-section split-grid">
+    <article class="surface-card">
+      <h2>{{ content.steps_title }}</h2>
+      <ol class="ordered-list">
+        {% for step in content.steps %}
+        <li>{{ step }}</li>
+        {% endfor %}
+      </ol>
+    </article>
+    <article class="surface-card">
+      <h2>{{ content.use_cases_title }}</h2>
+      <ul class="plain-list">
+        {% for item in content.use_cases %}
+        <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+    </article>
+  </section>
+
+  <section class="content-section split-grid preview-grid">
+    <article class="surface-card preview-card">
+      <h2>{{ content.preview_title }}</h2>
+      <ul class="plain-list">
+        {% for item in content.preview_points %}
+        <li>{{ item }}</li>
+        {% endfor %}
+      </ul>
+      <a class="text-link" href="{{ webapp_link }}">{{ content.cta_primary }}</a>
+    </article>
+    <article class="surface-card faq-card">
+      <h2>{{ content.faq_teaser_title }}</h2>
+      <p>{{ content.faq_teaser_text }}</p>
+      <a class="text-link" href="/{{ lang }}/faq">{{ content.faq_cta }}</a>
+    </article>
+  </section>
+
+  <section class="content-section split-grid">
+    <article class="surface-card">
+      <h2>{{ 'О продукте' if lang == 'ru' else 'About the product' }}</h2>
+      <p>{{ 'Узнайте, для кого создан Fin-gram и какую роль он решает в ежедневном финансовом процессе.' if lang == 'ru' else 'Understand who Fin-gram is built for and how it fits into a daily financial workflow.' }}</p>
+      <a class="text-link" href="/{{ lang }}/about">{{ 'Перейти на страницу About' if lang == 'ru' else 'Open About page' }}</a>
+    </article>
+    <article class="surface-card">
+      <h2>Pricing</h2>
+      <p>{{ 'Страница тарифов уже подготовлена для позиционирования и будущего роста продукта.' if lang == 'ru' else 'The pricing page is already prepared for positioning and future product expansion.' }}</p>
+      <a class="text-link" href="/{{ lang }}/pricing">{{ 'Открыть Pricing' if lang == 'ru' else 'Open Pricing' }}</a>
+    </article>
+  </section>
+
+  <section class="content-section">
+    <div class="section-head">
+      <span class="section-kicker">SEO</span>
+      <h2>{{ content.blog_title }}</h2>
+      <p>{{ content.blog_teaser }}</p>
+    </div>
+    <div class="feature-grid">
+      {% for post in posts %}
+      <article class="surface-card article-card">
+        <h3>{{ post.title }}</h3>
+        <p>{{ post.description }}</p>
+        <a class="text-link" href="/{{ lang }}/blog/{{ post.slug }}">{{ 'Читать статью' if lang == 'ru' else 'Read article' }}</a>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

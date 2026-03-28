@@ -1,0 +1,18 @@
+{% extends 'base_public.html' %}
+{% block content %}
+<main class="page-main">
+  <section class="page-hero compact">
+    <div class="eyebrow">Fin-gram</div>
+    <h1>{{ content.title }}</h1>
+    <p>{{ content.lead }}</p>
+  </section>
+  <section class="content-section feature-grid">
+    {% for card in content.cards %}
+    <article class="surface-card">
+      <h2>{{ card.title }}</h2>
+      <p>{{ card.text }}</p>
+    </article>
+    {% endfor %}
+  </section>
+</main>
+{% endblock %}
